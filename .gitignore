@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+.nuget/
+*.user
+.vs/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# 本地校验用临时工程（引用本机 Unity 工程路径）
+.validation-build/
+
+# 浏览器回归测试产物，按需重新生成
+artifacts/
+
+# 本机 Unity 工程路径配置
+mapforge-sync.json

@@ -1,0 +1,784 @@
+{
+  "version": 2,
+  "name": "SCENE_ORGANIZATION_DEMO",
+  "objects": [
+    {
+      "id": "environment",
+      "name": "Environment",
+      "type": "folder",
+      "parentId": null,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "color": "#69e0bf",
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [],
+      "layer": 0,
+      "collision": false,
+      "static": false,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "roads",
+      "name": "Roads",
+      "type": "folder",
+      "parentId": "environment",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "color": "#69e0bf",
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [],
+      "layer": 0,
+      "collision": false,
+      "static": false,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "buildings",
+      "name": "Buildings",
+      "type": "folder",
+      "parentId": "environment",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "color": "#69e0bf",
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [],
+      "layer": 0,
+      "collision": false,
+      "static": false,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "spawns",
+      "name": "SpawnPoints",
+      "type": "folder",
+      "parentId": "environment",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "color": "#69e0bf",
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [],
+      "layer": 0,
+      "collision": false,
+      "static": false,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "decorations",
+      "name": "Decorations",
+      "type": "folder",
+      "parentId": "environment",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "color": "#69e0bf",
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [],
+      "layer": 0,
+      "collision": false,
+      "static": false,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "ground",
+      "name": "Ground",
+      "type": "cube",
+      "parentId": "environment",
+      "color": "#283744",
+      "transform": {
+        "position": [
+          0,
+          -0.35,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          30,
+          0.5,
+          26
+        ]
+      },
+      "static": true,
+      "locked": true,
+      "tags": [
+        "ground"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "main_road",
+      "name": "Main Road",
+      "type": "cube",
+      "parentId": "roads",
+      "color": "#697e91",
+      "transform": {
+        "position": [
+          0,
+          0,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          4,
+          0.2,
+          12
+        ]
+      },
+      "static": true,
+      "tags": [
+        "road",
+        "walkable"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "lane_-1",
+      "name": "Left Lane",
+      "type": "cube",
+      "parentId": "roads",
+      "color": "#697e91",
+      "transform": {
+        "position": [
+          -9,
+          0,
+          -5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          3,
+          0.2,
+          10
+        ]
+      },
+      "static": true,
+      "tags": [
+        "road",
+        "walkable"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "spawn_-1",
+      "name": "Spawn Left",
+      "type": "sphere",
+      "parentId": "spawns",
+      "color": "#ff9c63",
+      "transform": {
+        "position": [
+          -9,
+          0.8,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "static": false,
+      "category": "waypoint",
+      "collision": false,
+      "tags": [
+        "spawn",
+        "enemy"
+      ],
+      "prefabType": "EnemySpawnPoint",
+      "parameters": {
+        "lane": 1,
+        "moveSpeed": 2,
+        "enemiesPerWave": 10
+      },
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "parametersJson": "{\"lane\":1,\"moveSpeed\":2,\"enemiesPerWave\":10}"
+    },
+    {
+      "id": "lane_0",
+      "name": "Center Lane",
+      "type": "cube",
+      "parentId": "roads",
+      "color": "#697e91",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          3,
+          0.2,
+          10
+        ]
+      },
+      "static": true,
+      "tags": [
+        "road",
+        "walkable"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "spawn_0",
+      "name": "Spawn Center",
+      "type": "sphere",
+      "parentId": "spawns",
+      "color": "#ff9c63",
+      "transform": {
+        "position": [
+          0,
+          0.8,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "static": false,
+      "category": "waypoint",
+      "collision": false,
+      "tags": [
+        "spawn",
+        "enemy"
+      ],
+      "prefabType": "EnemySpawnPoint",
+      "parameters": {
+        "lane": 2,
+        "moveSpeed": 2,
+        "enemiesPerWave": 10
+      },
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "parametersJson": "{\"lane\":2,\"moveSpeed\":2,\"enemiesPerWave\":10}"
+    },
+    {
+      "id": "lane_1",
+      "name": "Right Lane",
+      "type": "cube",
+      "parentId": "roads",
+      "color": "#697e91",
+      "transform": {
+        "position": [
+          9,
+          0,
+          -5
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          3,
+          0.2,
+          10
+        ]
+      },
+      "static": true,
+      "tags": [
+        "road",
+        "walkable"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "spawn_1",
+      "name": "Spawn Right",
+      "type": "sphere",
+      "parentId": "spawns",
+      "color": "#ff9c63",
+      "transform": {
+        "position": [
+          9,
+          0.8,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "static": false,
+      "category": "waypoint",
+      "collision": false,
+      "tags": [
+        "spawn",
+        "enemy"
+      ],
+      "prefabType": "EnemySpawnPoint",
+      "parameters": {
+        "lane": 3,
+        "moveSpeed": 2,
+        "enemiesPerWave": 10
+      },
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "parametersJson": "{\"lane\":3,\"moveSpeed\":2,\"enemiesPerWave\":10}"
+    },
+    {
+      "id": "junction",
+      "name": "Junction",
+      "type": "cube",
+      "parentId": "roads",
+      "color": "#697e91",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          21,
+          0.2,
+          3
+        ]
+      },
+      "static": true,
+      "tags": [
+        "road",
+        "junction"
+      ],
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "layer": 0,
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "building_-1",
+      "name": "Building West",
+      "type": "cube",
+      "parentId": "buildings",
+      "color": "#427c78",
+      "transform": {
+        "position": [
+          -8,
+          2.4,
+          6
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          6,
+          4.8,
+          6
+        ]
+      },
+      "static": true,
+      "tags": [
+        "building",
+        "cover"
+      ],
+      "layer": 0,
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "beacon_-1",
+      "name": "Beacon West",
+      "type": "cylinder",
+      "parentId": "decorations",
+      "color": "#69e0bf",
+      "transform": {
+        "position": [
+          -3,
+          1.2,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.3,
+          1.7,
+          0.3
+        ]
+      },
+      "static": true,
+      "category": "decoration",
+      "collision": false,
+      "material": {
+        "type": "unlit",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [
+        "decoration",
+        "beacon"
+      ],
+      "layer": 0,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}"
+    },
+    {
+      "id": "building_1",
+      "name": "Building East",
+      "type": "cube",
+      "parentId": "buildings",
+      "color": "#427c78",
+      "transform": {
+        "position": [
+          8,
+          2.4,
+          6
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          6,
+          4.8,
+          6
+        ]
+      },
+      "static": true,
+      "tags": [
+        "building",
+        "cover"
+      ],
+      "layer": 0,
+      "material": {
+        "type": "standard",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "collision": true,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}",
+      "category": "geometry"
+    },
+    {
+      "id": "beacon_1",
+      "name": "Beacon East",
+      "type": "cylinder",
+      "parentId": "decorations",
+      "color": "#69e0bf",
+      "transform": {
+        "position": [
+          3,
+          1.2,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          0.3,
+          1.7,
+          0.3
+        ]
+      },
+      "static": true,
+      "category": "decoration",
+      "collision": false,
+      "material": {
+        "type": "unlit",
+        "roughness": 0.62,
+        "metalness": 0.08
+      },
+      "tags": [
+        "decoration",
+        "beacon"
+      ],
+      "layer": 0,
+      "visible": true,
+      "locked": false,
+      "collapsed": false,
+      "prefabType": "",
+      "parameters": {},
+      "parametersJson": "{}"
+    }
+  ],
+  "version": 2,
+  "settings": {
+    "gridSize": 1,
+    "unit": "meter"
+  },
+  "groups": [],
+  "gameplay": {},
+  "rotationUnit": "radians"
+}
