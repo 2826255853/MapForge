@@ -1,0 +1,549 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapforge.local/schemas/map-format-v2.json",
+  "title": "MapForge map document",
+  "description": "Stable MapForge v2 document envelope. Unknown properties are extension points and must be preserved.",
+  "type": "object",
+  "required": [
+    "version",
+    "name",
+    "settings",
+    "objects",
+    "groups",
+    "gameplay"
+  ],
+  "properties": {
+    "version": {
+      "const": 2,
+      "description": "MapForge format version. Required, exactly 2; older documents are rejected instead of migrated."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "settings": {
+      "type": "object",
+      "required": [
+        "gridSize",
+        "unit"
+      ],
+      "properties": {
+        "gridSize": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "unit": {
+          "const": "meter"
+        }
+      },
+      "additionalProperties": true
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/object"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "Optional group metadata. Object parentId remains authoritative for hierarchy."
+    },
+    "gameplay": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "rotationUnit": {
+      "const": "radians"
+    },
+    "unity": {
+      "$ref": "#/$defs/unityScene"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "object": {
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "cube",
+            "sphere",
+            "cylinder",
+            "plane",
+            "folder",
+            "group"
+          ]
+        },
+        "parentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "transform": {
+          "type": "object",
+          "properties": {
+            "position": {
+              "$ref": "#/$defs/vector"
+            },
+            "rotation": {
+              "$ref": "#/$defs/vector"
+            },
+            "scale": {
+              "$ref": "#/$defs/vector"
+            }
+          },
+          "additionalProperties": true
+        },
+        "unity": {
+          "$ref": "#/$defs/unityMapping"
+        }
+      },
+      "additionalProperties": true
+    },
+    "vector": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "unityMapping": {
+      "type": "object",
+      "description": "Unity component mapping for one object. Omitted sections keep the Unity defaults.",
+      "properties": {
+        "prefab": {
+          "type": "object",
+          "description": "Prefab reference, exported as a Prefab ID (plus optional asset path and GUID).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "guid": {
+              "type": "string"
+            },
+            "assetPath": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "collider": {
+          "type": "object",
+          "description": "Collider type to author: auto keeps the primitive collider Unity creates.",
+          "properties": {
+            "type": {
+              "enum": [
+                "auto",
+                "box",
+                "sphere",
+                "capsule",
+                "mesh",
+                "none"
+              ]
+            },
+            "isTrigger": {
+              "type": "boolean"
+            },
+            "center": {
+              "$ref": "#/$defs/vector"
+            },
+            "size": {
+              "$ref": "#/$defs/vector"
+            },
+            "radius": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "direction": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Capsule axis: 0=X, 1=Y, 2=Z."
+            }
+          },
+          "additionalProperties": true
+        },
+        "navMesh": {
+          "type": "object",
+          "description": "NavMesh marker: writes NavMeshModifier, NavMeshLink or NavMeshSurface on import.",
+          "properties": {
+            "role": {
+              "enum": [
+                "none",
+                "walkable",
+                "obstacle",
+                "notWalkable",
+                "link",
+                "source"
+              ]
+            },
+            "area": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            },
+            "agentType": {
+              "type": "string"
+            },
+            "ignoreFromBuild": {
+              "type": "boolean"
+            },
+            "applyToChildren": {
+              "type": "boolean"
+            },
+            "linkStart": {
+              "$ref": "#/$defs/vector"
+            },
+            "linkEnd": {
+              "$ref": "#/$defs/vector"
+            },
+            "linkWidth": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "bidirectional": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "spawnPoint": {
+          "type": "object",
+          "description": "Creates an EnemySpawnPoint. Values mirror the component defaults.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "spawnInterval": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 600
+            },
+            "initialDelay": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600
+            },
+            "enemiesPerWave": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999
+            },
+            "moveSpeed": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "travelDirection": {
+              "$ref": "#/$defs/vector"
+            },
+            "monsterType": {
+              "enum": [
+                "Ground",
+                "Flying"
+              ]
+            },
+            "flightHeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 200
+            },
+            "flyingEntrance": {
+              "type": "boolean"
+            },
+            "entranceAltitude": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 500
+            },
+            "laneId": {
+              "type": "string"
+            },
+            "enemyPrefabId": {
+              "type": "string",
+              "description": "Prefab ID resolved against the top-level unity.prefabs library."
+            },
+            "waves": {
+              "type": "array",
+              "description": "Per-wave override for an EnemySpawnPoint; element 0 is wave 1.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "enemyCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 999
+                  },
+                  "monsterType": {
+                    "enum": [
+                      "",
+                      "Ground",
+                      "Flying"
+                    ]
+                  },
+                  "flightHeight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 200
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "enemyCore": {
+          "type": "object",
+          "description": "Creates an EnemyCore.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "maxHealth": {
+              "type": "number",
+              "minimum": 1
+            },
+            "groundDamage": {
+              "type": "number",
+              "minimum": 0
+            },
+            "flyingDamage": {
+              "type": "number",
+              "minimum": 0
+            },
+            "arrivalRadius": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "pathNode": {
+          "type": "object",
+          "description": "Path node marker plus its outgoing links (other object IDs in the same map).",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "role": {
+              "enum": [
+                "node",
+                "waypoint",
+                "junction",
+                "end"
+              ]
+            },
+            "waitTime": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "trigger": {
+          "type": "object",
+          "description": "Trigger volume and its event list.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "shape": {
+              "enum": [
+                "box",
+                "sphere"
+              ]
+            },
+            "isTrigger": {
+              "type": "boolean"
+            },
+            "once": {
+              "type": "boolean"
+            },
+            "center": {
+              "$ref": "#/$defs/vector"
+            },
+            "size": {
+              "$ref": "#/$defs/vector"
+            },
+            "radius": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "when": {
+                    "enum": [
+                      "enter",
+                      "exit"
+                    ]
+                  },
+                  "action": {
+                    "enum": [
+                      "spawn",
+                      "damage",
+                      "goal",
+                      "message",
+                      "enable",
+                      "disable"
+                    ]
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "delay": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 600
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "unityScene": {
+      "type": "object",
+      "description": "Scene-wide Unity mapping: prefab library, wave configuration and NavMesh bake options.",
+      "properties": {
+        "prefabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "object",
+                  "enemy",
+                  "tower",
+                  "trap",
+                  "prop"
+                ]
+              },
+              "assetPath": {
+                "type": "string"
+              },
+              "guid": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "waves": {
+          "type": "object",
+          "description": "Written to the scene WaveManager.",
+          "properties": {
+            "totalWaves": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            },
+            "initialDelay": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 600
+            },
+            "enemiesPerWave": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999
+            },
+            "spawnInterval": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 600
+            },
+            "transitionDelays": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "settings": {
+          "type": "object",
+          "description": "Written to the scene NavMeshSurface when buildNavMeshOnImport is set.",
+          "properties": {
+            "buildNavMeshOnImport": {
+              "type": "boolean"
+            },
+            "agentType": {
+              "type": "string"
+            },
+            "collectObjects": {
+              "enum": [
+                "all",
+                "volume",
+                "children",
+                "markedWithModifier"
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
