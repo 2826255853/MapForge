@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/TransformControls.js';
 import { normalizeDocument, makeNode, clone, descendants, rootsOf, effectiveState, assertEditable, searchHierarchy, History, TYPE_LABELS, MAP_FORMAT_VERSION, unityStats, unitySummary } from './scene-model.js';
+import { createAutosaveStore } from './autosave.js';
 import { unitySectionHtml, wireUnitySection, unitySceneHtml, wireUnityScene } from './unity-ui.js';
+import { addCeilingGrid, assertCeilingSupport, resizeCeilingMask, ceilingSectionHtml, wireCeilingSection } from './ceiling-traps.js';
 import { unitySyncHtml, wireUnitySync, fetchSyncStatus, fetchSyncPreview, sendMapToUnity, setUnityTarget, resetSyncBaseline } from './unity-sync.js';
 
 const $ = selector => document.querySelector(selector);
@@ -26,6 +28,9 @@ let selectionBoxes = [], colliderBoxes = [];
 const capture = () => ({ document: clone(doc), selection: [...selected] });
 const unityDialog = $('#unityDialog');
 const unitySyncDialog = $('#unitySyncDialog');
+const autosaveDialog = $('#autosaveDialog');
+const autosaveStore = createAutosaveStore({ normalizeDocument });
+let autosaveTimer = null, autosaveDirty = false, pendingAutosaveDraft = null;
 // Unity edits reuse the shared commit path, so validation, undo/redo and locked-object rules still apply.
 const unityApi = {
   edit: (action, message) => safely(() => commit(d => action(d.unity), null, message)),
@@ -35,6 +40,97 @@ const unityApi = {
 const find = id => doc.objects.find(o => o.id === id);
 const single = () => selected.size === 1 ? find([...selected][0]) : null;
 function notice(message, error = false) { $('#message').textContent = message; $('#message').classList.toggle('error', error); }
+function setAutosaveStatus(message, error = false) {
+  const status = $('#autosaveStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle('error', error);
+  status.title = error ? message : '';
+}
+function displaySavedAt(value) {
+  return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+function markAutosaveDirty() {
+  autosaveDirty = true;
+  setAutosaveStatus('待自动保存');
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(flushAutosave, 500);
+}
+function writeAutosave(status = 'pending') {
+  const result = status === 'acknowledged' ? autosaveStore.saveAcknowledged(doc) : autosaveStore.savePending(doc);
+  if (!result.ok) {
+    setAutosaveStatus('自动保存失败', true);
+    const statusNode = $('#autosaveStatus');
+    if (statusNode) statusNode.title = `自动保存失败：${result.error.message}`;
+    return result;
+  }
+  autosaveDirty = false;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+  setAutosaveStatus(`已自动保存 ${displaySavedAt(result.draft.savedAt)}`);
+  return result;
+}
+function flushAutosave() {
+  autosaveTimer = null;
+  if (autosaveDirty) writeAutosave('pending');
+}
+function resetHistory() {
+  history.undoStack.length = 0;
+  history.redoStack.length = 0;
+}
+function recoverDraft(draft) {
+  if (!draft) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+  autosaveDirty = false;
+  pendingAutosaveDraft = null;
+  resetHistory();
+  restore({ document: draft.document, selection: [] });
+  const result = writeAutosave('acknowledged');
+  autosaveDialog.hidden = true;
+  notice('已恢复自动保存的地图草稿');
+  return result;
+}
+function initializeAutosave() {
+  const result = autosaveStore.load();
+  const statusNode = $('#autosaveStatus');
+  if (result.error) {
+    setAutosaveStatus(result.invalid ? '无效草稿已清除' : '自动保存不可用', true);
+    if (statusNode) statusNode.title = result.invalid
+      ? `无效草稿已清除：${result.error.message}`
+      : `无法读取自动保存：${result.error.message}`;
+  }
+  const draft = result.draft;
+  if (draft?.status === 'acknowledged') {
+    resetHistory();
+    restore({ document: draft.document, selection: [] });
+    setAutosaveStatus(`已自动保存 ${displaySavedAt(draft.savedAt)}`);
+    return;
+  }
+  if (draft?.status === 'pending') {
+    pendingAutosaveDraft = draft;
+    $('#autosaveSummary').textContent = `发现尚未确认的自动保存草稿“${draft.document.name}”，包含 ${draft.document.objects.length} 个对象，保存于 ${new Date(draft.savedAt).toLocaleString()}。`;
+    autosaveDialog.hidden = false;
+    setAutosaveStatus('有待恢复的草稿');
+  } else if (!result.error) {
+    setAutosaveStatus('自动保存就绪');
+  }
+  rebuild();
+}
+$('#autosaveRestoreBtn').onclick = () => recoverDraft(pendingAutosaveDraft);
+$('#autosaveDiscardBtn').onclick = () => {
+  const result = autosaveStore.clear();
+  pendingAutosaveDraft = null;
+  autosaveDialog.hidden = true;
+  setAutosaveStatus(result.ok ? '草稿已丢弃' : '无法清除自动保存草稿', !result.ok);
+  if (!result.ok) {
+    const statusNode = $('#autosaveStatus');
+    if (statusNode) statusNode.title = `无法清除自动保存草稿：${result.error.message}`;
+  }
+};
+setInterval(() => { if (autosaveDirty) flushAutosave(); }, 30_000);
+addEventListener('pagehide', flushAutosave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAutosave(); });
 /**
  * Runs an action and reports whatever it throws. Async actions are awaited too: without the
  * catch below a rejected fetch (an unreachable target, a refused Unity project) escapes as an
@@ -52,14 +148,57 @@ function blurActiveInside(root) { const active = document.activeElement; if (act
 function nextId(document) { const ids = new Set(document.objects.map(o => o.id)); let n = 1; while (ids.has(`obj_${n}`)) n++; return `obj_${n}`; }
 function commit(change, selection = null, message = '修改已保存，可撤销') {
   if (gizmo.dragging) return;
-  const before = capture(), draft = clone(doc); change(draft);
+  const before = capture(), draft = clone(doc); change(draft); refreshCeilings(draft);
   const after = { document: normalizeDocument(draft), selection: selection instanceof Function ? selection(draft) : selection ?? [...selected] };
-  history.record(before, after); restore(after); notice(message);
+  const changed = history.record(before, after);
+  restore(after);
+  if (changed) markAutosaveDirty();
+  notice(message);
 }
 function restore(snapshot) {
   doc = clone(snapshot.document); selected = new Set(snapshot.selection.filter(id => doc.objects.some(o => o.id === id)));
   gridStep = doc.settings.gridSize; $('#gridSize').value = String(gridStep); $('#gridStatus').textContent = `GRID ${gridStep}M · PERSPECTIVE`;
   rebuild();
+}
+
+function refreshCeilings(document) {
+  const matrices = new Map(), byId = new Map(document.objects.map(o => [o.id, o]));
+  const matrix = node => {
+    if (matrices.has(node.id)) return matrices.get(node.id);
+    const t = node.transform, m = new THREE.Matrix4().compose(new THREE.Vector3(...t.position),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(...t.rotation)), new THREE.Vector3(...t.scale));
+    if (node.parentId) m.premultiply(matrix(byId.get(node.parentId)));
+    matrices.set(node.id, m); return m;
+  };
+  for (const node of document.objects) {
+    if (!node.unity.ceilingTrapGrids?.length) continue;
+    assertCeilingSupport(node);
+    const base = matrix(node), right = new THREE.Vector3().setFromMatrixColumn(base, 0), up = new THREE.Vector3().setFromMatrixColumn(base, 1), forward = new THREE.Vector3().setFromMatrixColumn(base, 2);
+    if (up.clone().normalize().dot(new THREE.Vector3(0, 1, 0)) < .999 || Math.abs(right.clone().normalize().dot(forward.clone().normalize())) > .001 || base.determinant() <= 0)
+      throw new Error('天花板的父级变换造成倾斜、剪切或负缩放，请先调整父级。');
+    const size = node.type === 'plane' ? [3, .12, 3] : [1, 1, 1];
+    const box = node.unity.collider, center = box.type === 'box' ? box.center.map((v, i) => v * size[i]) : [0, 0, 0];
+    if (box.type === 'box') size.forEach((v, i) => { size[i] = v * box.size[i]; });
+    for (const g of node.unity.ceilingTrapGrids) {
+      if (!g.autoFit) continue;
+      const columns = Math.floor(size[0] * right.length() / g.cellSize + .001), rows = Math.floor(size[2] * forward.length() / g.cellSize + .001);
+      if (columns < 1 || rows < 1 || columns > 256 || rows > 256) throw new Error('天花板底面须能容纳 1–256 行/列完整格。');
+      if (columns !== g.columns || rows !== g.rows) resizeCeilingMask(g, columns, rows);
+      g.origin = [center[0] - columns * g.cellSize / right.length() / 2, center[1] - size[1] / 2, center[2] - rows * g.cellSize / forward.length() / 2];
+      g.rotation = [Math.PI / 2, 0, 0];
+    }
+  }
+}
+
+function createCeiling() {
+  let id;
+  commit(d => {
+    id = nextId(d); const node = makeNode('cube', id);
+    node.name = '天花板'; node.static = true; node.collision = true; node.color = '#7894ad';
+    node.transform.position = [0, 4.1, 0]; node.transform.scale = [4, .2, 4];
+    addCeilingGrid(node); d.objects.push(node);
+  }, () => [id], '已创建天花板与朝下安装网格，可撤销');
+  focusNodes([id]);
 }
 function disposeTree(root) { root.traverse(o => { o.geometry?.dispose(); if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material?.dispose(); }); root.clear(); }
 function geometry(type) { return type === 'cube' ? new THREE.BoxGeometry(1, 1, 1) : type === 'sphere' ? new THREE.SphereGeometry(0.6, 24, 16) : type === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1.4, 24) : type === 'plane' ? new THREE.BoxGeometry(3, 0.12, 3) : null; }
@@ -94,6 +233,27 @@ function updateOverlays() {
     if (highlighted.has(node.id) && isShown(node)) { const helper = new THREE.BoxHelper(item.mesh, states.get(node.id).locked ? 0x83909b : 0x69e0bf); overlays.add(helper); selectionBoxes.push(helper); }
   }
   if (filters.unity) unityOverlays();
+  ceilingOverlays();
+}
+
+function ceilingOverlays() {
+  for (const node of doc.objects) {
+    if (!isShown(node) || (!selected.has(node.id) && !filters.unity)) continue;
+    const base = runtime.get(node.id).root.matrixWorld;
+    const right = new THREE.Vector3().setFromMatrixColumn(base, 0).normalize();
+    const forward = new THREE.Vector3().setFromMatrixColumn(base, 2).normalize();
+    const normal = new THREE.Vector3().setFromMatrixColumn(base, 1).normalize().negate();
+    for (const g of node.unity.ceilingTrapGrids ?? []) {
+      const origin = new THREE.Vector3(...g.origin).applyMatrix4(base).addScaledVector(normal, g.surfaceOffset);
+      const rotation = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, forward, normal));
+      for (let y = 0; y < g.rows; y++) for (let x = 0; x < g.columns; x++) {
+        const center = origin.clone().addScaledVector(right, (x + .5) * g.cellSize).addScaledVector(forward, (y + .5) * g.cellSize);
+        const m = new THREE.Matrix4().compose(center, rotation, new THREE.Vector3(g.cellSize * .96, g.cellSize * .96, .02));
+        previewLine(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), m, g.openCells[x + y * g.columns] ? 0x69e0bf : 0xff5f8d);
+      }
+      overlays.add(new THREE.ArrowHelper(normal, origin.clone().addScaledVector(right, g.columns * g.cellSize / 2).addScaledVector(forward, g.rows * g.cellSize / 2), .8, 0x6ba7ff));
+    }
+  }
 }
 // Display-only preview of the authored Unity components, so a mapping edit is visible in
 // the viewport before it is exported. This never mutates the document.
@@ -186,7 +346,7 @@ function renderInspector() {
   }
   const blocked = states.get(node.id).locked, excluded = descendants(doc, [node.id]);
   const parentOptions = '<option value="">场景根节点</option>' + doc.objects.filter(o => !excluded.has(o.id)).map(o => `<option value="${escape(o.id)}" ${o.id === node.parentId ? 'selected' : ''}>${escape(pathFor(o))}</option>`).join('');
-  blurActiveInside(el); el.innerHTML = `<div class="inspector-heading"><strong>${escape(node.name)}</strong><button class="btn" id="focusSelection">定位 · F</button></div><div class="node-path">${escape(pathFor(node))}</div><div class="node-id">ID: ${escape(node.id)} · ${labels[node.type]}</div>${blocked ? '<p class="lock-notice">已锁定（含父级继承）。在层级中解锁后编辑。</p>' : ''}<fieldset ${blocked ? 'disabled' : ''}>${field('名称', `<input id="objName" value="${escape(node.name)}" maxlength="200">`)}${field('父级', `<select id="parentId">${parentOptions}</select>`)}<div class="eyebrow">Local Transform / 相对父级</div>${['position', 'rotation', 'scale'].map(prop => `<div class="transform-label">${{ position: '位置（米）', rotation: '旋转（度）', scale: '缩放' }[prop]}</div><div class="axis-grid">${node.transform[prop].map((value, i) => `<label>${'XYZ'[i]}<input type="number" step="any" ${prop === 'scale' ? 'min="0.01"' : ''} data-prop="${prop}" data-axis="${i}" value="${Number((prop === 'rotation' ? THREE.MathUtils.radToDeg(value) : value).toFixed(4))}"></label>`).join('')}</div>`).join('')}<div class="eyebrow">Object Properties / 对象属性</div>${field('颜色', `<input id="objColor" type="color" value="${node.color}">`)}${field('材质', `<select id="materialType"><option value="standard" ${node.material.type === 'standard' ? 'selected' : ''}>标准 / 受光照</option><option value="unlit" ${node.material.type === 'unlit' ? 'selected' : ''}>无光照</option></select>`)}${field('粗糙度', `<input id="roughness" type="number" min="0" max="1" step="any" value="${node.material.roughness}">`)}${field('金属度', `<input id="metalness" type="number" min="0" max="1" step="any" value="${node.material.metalness}">`)}${field('标签', `<input id="objTags" value="${escape(node.tags.join(', '))}" placeholder="多个标签用逗号分隔">`)}${field('Layer', `<input id="objLayer" type="number" min="0" max="31" step="1" value="${node.layer}">`)}${field('碰撞', `<input id="objCollision" type="checkbox" ${node.collision ? 'checked' : ''}>`)}${field('静态', `<input id="objStatic" type="checkbox" ${node.static ? 'checked' : ''}>`)}${field('Prefab', `<input id="objPrefab" value="${escape(node.prefabType)}" placeholder="例如 EnemySpawnPoint">`)}${field('显示分类', `<select id="objCategory"><option value="geometry" ${node.category === 'geometry' ? 'selected' : ''}>场景几何</option><option value="waypoint" ${node.category === 'waypoint' ? 'selected' : ''}>路径点</option><option value="decoration" ${node.category === 'decoration' ? 'selected' : ''}>装饰物</option></select>`)}<label class="parameters-label" for="objParameters">游戏逻辑参数（JSON 对象）</label><textarea id="objParameters" rows="6" spellcheck="false">${escape(JSON.stringify(node.parameters, null, 2))}</textarea><button class="btn" id="applyParameters">应用参数</button><button class="danger" id="deleteBtn">删除对象及子对象</button>${unitySectionHtml(node, doc, { escape, field })}</fieldset>`;
+  blurActiveInside(el); el.innerHTML = `<div class="inspector-heading"><strong>${escape(node.name)}</strong><button class="btn" id="focusSelection">定位 · F</button></div><div class="node-path">${escape(pathFor(node))}</div><div class="node-id">ID: ${escape(node.id)} · ${labels[node.type]}</div>${blocked ? '<p class="lock-notice">已锁定（含父级继承）。在层级中解锁后编辑。</p>' : ''}<fieldset ${blocked ? 'disabled' : ''}>${field('名称', `<input id="objName" value="${escape(node.name)}" maxlength="200">`)}${field('父级', `<select id="parentId">${parentOptions}</select>`)}<div class="eyebrow">Local Transform / 相对父级</div>${['position', 'rotation', 'scale'].map(prop => `<div class="transform-label">${{ position: '位置（米）', rotation: '旋转（度）', scale: '缩放' }[prop]}</div><div class="axis-grid">${node.transform[prop].map((value, i) => `<label>${'XYZ'[i]}<input type="number" step="any" ${prop === 'scale' ? 'min="0.01"' : ''} data-prop="${prop}" data-axis="${i}" value="${Number((prop === 'rotation' ? THREE.MathUtils.radToDeg(value) : value).toFixed(4))}"></label>`).join('')}</div>`).join('')}<div class="eyebrow">Object Properties / 对象属性</div>${field('颜色', `<input id="objColor" type="color" value="${node.color}">`)}${field('材质', `<select id="materialType"><option value="standard" ${node.material.type === 'standard' ? 'selected' : ''}>标准 / 受光照</option><option value="unlit" ${node.material.type === 'unlit' ? 'selected' : ''}>无光照</option></select>`)}${field('粗糙度', `<input id="roughness" type="number" min="0" max="1" step="any" value="${node.material.roughness}">`)}${field('金属度', `<input id="metalness" type="number" min="0" max="1" step="any" value="${node.material.metalness}">`)}${field('标签', `<input id="objTags" value="${escape(node.tags.join(', '))}" placeholder="多个标签用逗号分隔">`)}${field('Layer', `<input id="objLayer" type="number" min="0" max="31" step="1" value="${node.layer}">`)}${field('碰撞', `<input id="objCollision" type="checkbox" ${node.collision ? 'checked' : ''}>`)}${field('静态', `<input id="objStatic" type="checkbox" ${node.static ? 'checked' : ''}>`)}${field('Prefab', `<input id="objPrefab" value="${escape(node.prefabType)}" placeholder="例如 EnemySpawnPoint">`)}${field('显示分类', `<select id="objCategory"><option value="geometry" ${node.category === 'geometry' ? 'selected' : ''}>场景几何</option><option value="waypoint" ${node.category === 'waypoint' ? 'selected' : ''}>路径点</option><option value="decoration" ${node.category === 'decoration' ? 'selected' : ''}>装饰物</option></select>`)}<label class="parameters-label" for="objParameters">游戏逻辑参数（JSON 对象）</label><textarea id="objParameters" rows="6" spellcheck="false">${escape(JSON.stringify(node.parameters, null, 2))}</textarea><button class="btn" id="applyParameters">应用参数</button><button class="danger" id="deleteBtn">删除对象及子对象</button>${ceilingSectionHtml(node, escape)}${unitySectionHtml(node, doc, { escape, field })}</fieldset>`;
   $('#focusSelection').onclick = () => focusNodes([node.id]);
   const edit = (action, subtree = false, message = '修改已保存，可撤销') => safely(() => { assertEditable(doc, [node.id], subtree); commit(d => action(d.objects.find(o => o.id === node.id)), null, message); });
   $('#objName').onchange = e => edit(o => { o.name = e.target.value.trim() || o.id; });
@@ -203,6 +363,7 @@ function renderInspector() {
   $('#objPrefab').onchange = e => edit(o => { o.prefabType = e.target.value.trim(); }); $('#objCategory').onchange = e => edit(o => { o.category = e.target.value; });
   $('#applyParameters').onclick = () => edit(o => { try { o.parameters = JSON.parse($('#objParameters').value); } catch { throw new Error('游戏逻辑参数不是有效的 JSON。'); } });
   $('#deleteBtn').onclick = () => safely(deleteSelection);
+  wireCeilingSection(node, el, edit, () => {});
   wireUnitySection(node, doc, { root: el, edit: (action, message) => edit(action, false, message), editScene: unityApi.editScene, notice });
 }
 
@@ -266,24 +427,26 @@ gizmo.addEventListener('dragging-changed', event => {
   try {
     const node = single(); assertEditable(doc, [node.id], true); const root = runtime.get(node.id).root, draft = clone(doc), target = draft.objects.find(o => o.id === node.id);
     target.transform = { position: root.position.toArray(), rotation: [root.rotation.x, root.rotation.y, root.rotation.z], scale: root.scale.toArray() };
-    doc = normalizeDocument(draft); history.record(before, capture()); rebuild(); notice('变换已保存，可撤销');
+    refreshCeilings(draft); doc = normalizeDocument(draft); const changed = history.record(before, capture()); rebuild(); if (changed) markAutosaveDirty(); notice('变换已保存，可撤销');
   } catch (error) { restore(before); notice(error.message, true); }
 });
 gizmo.addEventListener('objectChange', () => { const root = gizmo.object; if (!root) return; document.querySelectorAll('[data-prop]').forEach(input => { const value = root[input.dataset.prop]['xyz'[Number(input.dataset.axis)]]; input.value = Number((input.dataset.prop === 'rotation' ? THREE.MathUtils.radToDeg(value) : value).toFixed(4)); }); });
 applySnap();
-function undo() { if (gizmo.dragging) return; const previous = history.undo(capture()); if (previous) { restore(previous); notice('已撤销'); } }
-function redo() { if (gizmo.dragging) return; const next = history.redo(capture()); if (next) { restore(next); notice('已重做'); } }
+function undo() { if (gizmo.dragging) return; const previous = history.undo(capture()); if (previous) { restore(previous); markAutosaveDirty(); notice('已撤销'); } }
+function redo() { if (gizmo.dragging) return; const next = history.redo(capture()); if (next) { restore(next); markAutosaveDirty(); notice('已重做'); } }
 function importMapText(text) {
   let source; try { source = JSON.parse(text); } catch { throw new Error('文件不是有效的 JSON。'); }
-  const next = normalizeDocument(source), before = capture(), after = { document: next, selection: [] }; history.record(before, after); restore(after); notice(`已导入 ${next.objects.length} 个对象`);
+  const next = normalizeDocument(source), before = capture(), after = { document: next, selection: [] }; const changed = history.record(before, after); restore(after); if (changed) markAutosaveDirty(); notice(`已导入 ${next.objects.length} 个对象`);
 }
 function exportMap() {
   const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'mapforge-world.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); const stats = unityStats(doc);
+  writeAutosave('acknowledged');
   notice(`地图已导出：${doc.objects.length} 个对象 · Unity 组件 Prefab ${stats.linkedPrefabs} / Collider ${stats.colliders} / NavMesh ${stats.navMesh} / SpawnPoint ${stats.spawnPoints} / EnemyCore ${stats.enemyCores} / 路径节点 ${stats.pathNodes} / 触发器 ${stats.triggers} / 总波次 ${stats.totalWaves}`);
 }
 document.querySelectorAll('.piece').forEach(b => b.onclick = () => safely(() => add(b.dataset.type))); document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+$('#ceilingBtn').onclick = () => safely(createCeiling);
 for (const [id, action] of Object.entries({ undoBtn: undo, redoBtn: redo, copyBtn: copySelection, pasteBtn: () => pasteSelection(), arrayBtn: arrayDuplicate, alignBtn: alignSelection, folderBtn: () => add('folder'), groupBtn: groupSelection, rootBtn: () => reparent([...selected], null), focusBtn: () => focusNodes([...selected]), saveBtn: exportMap })) $(`#${id}`).onclick = () => safely(action);
-$('#newBtn').onclick = () => { const before = capture(), after = { document: normalizeDocument({ version: MAP_FORMAT_VERSION, objects: [] }), selection: [] }; history.record(before, after); restore(after); notice('已新建场景，可撤销恢复'); };
+$('#newBtn').onclick = () => { const before = capture(), after = { document: normalizeDocument({ version: MAP_FORMAT_VERSION, objects: [] }), selection: [] }; const changed = history.record(before, after); restore(after); if (changed) markAutosaveDirty(); notice('已新建场景，可撤销恢复'); };
 $('#importBtn').onclick = () => $('#importFile').click();
 $('#importFile').onchange = async e => { const file = e.target.files?.[0]; if (!file) return; try { importMapText(await file.text()); } catch (error) { notice(`导入失败：${error.message}`, true); } finally { e.target.value = ''; } };
 $('#playBtn').onclick = () => notice('请导出 JSON 后在 Unity 的 MapForge 菜单中导入并运行地图。');
@@ -424,6 +587,7 @@ renderer.domElement.addEventListener('pointerup', event => {
 });
 renderer.domElement.addEventListener('pointercancel', endPointer); renderer.domElement.addEventListener('lostpointercapture', endPointer); addEventListener('blur', endPointer);
 addEventListener('keydown', e => {
+  if (!autosaveDialog.hidden) { e.preventDefault(); return; }
   if (e.target instanceof Element && e.target.closest('input, select, textarea, [contenteditable="true"]')) return;
   const key = e.key.toLowerCase(), modifier = e.ctrlKey || e.metaKey;
   if (modifier) { const action = key === 'z' ? (e.shiftKey ? redo : undo) : ({ y: redo, c: copySelection, v: () => pasteSelection(), g: groupSelection, a: () => select(doc.objects.filter(o => isShown(o) && !states.get(o.id).locked).map(o => o.id)) })[key]; if (action) { e.preventDefault(); safely(action); } return; }
@@ -431,5 +595,5 @@ addEventListener('keydown', e => {
   if (key === 'delete' || key === 'backspace') { e.preventDefault(); safely(deleteSelection); } if (key === 'f') focusNodes([...selected]); if (key === 'escape') { if (!unitySyncDialog.hidden) closeSyncDialog(); else if (!unityDialog.hidden) closeUnityDialog(); else select([]); }
 });
 function resize() { const w = viewport.clientWidth, h = viewport.clientHeight; if (!w || !h) return; camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
-new ResizeObserver(resize).observe(viewport); resize(); rebuild();
+new ResizeObserver(resize).observe(viewport); resize(); initializeAutosave();
 (function loop() { requestAnimationFrame(loop); controls.update(); world.updateMatrixWorld(true); selectionBoxes.forEach(b => b.update()); colliderBoxes.forEach(b => b.update()); renderer.render(scene, camera); })();

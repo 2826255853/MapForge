@@ -1,3 +1,4 @@
+import { normalizeCeilingGrids } from './ceiling-traps.js';
 // Serializable scene data, shared by the editor and the regression tests.
 export const TYPES = ['cube', 'sphere', 'cylinder', 'plane', 'folder', 'group'];
 export const CATEGORIES = ['geometry', 'waypoint', 'decoration'];
@@ -32,6 +33,7 @@ export const DEFAULT_UNITY_SETTINGS = Object.freeze({ buildNavMeshOnImport: fals
 /** Editor-side mirror of the Unity component defaults (EnemyCore, EnemySpawnPoint, colliders). */
 export function defaultUnityMapping() {
   return {
+    ceilingTrapGrids: [],
     prefab: { id: '', guid: '', assetPath: '' },
     collider: { type: 'auto', isTrigger: false, center: [0, 0, 0], size: [1, 1, 1], radius: 0.5, height: 2, direction: 1 },
     navMesh: { role: 'none', area: 0, agentType: 'Humanoid', ignoreFromBuild: false, applyToChildren: false, linkStart: [0, 0, 0], linkEnd: [0, 0, 0], linkWidth: 1, bidirectional: true },
@@ -143,6 +145,8 @@ export function normalizeUnityMapping(raw, id, failure) {
     };
   });
   return {
+    ceilingTrapGrids: normalizeCeilingGrids(raw.ceilingTrapGrids, id),
+    ...(raw.wallTrapGrids === undefined ? {} : { wallTrapGrids: clone(raw.wallTrapGrids) }),
     prefab: { id: r.text('prefab.id', prefab.id), guid: r.text('prefab.guid', prefab.guid), assetPath: r.text('prefab.assetPath', prefab.assetPath) },
     collider: {
       type: r.choice('collider.type', collider.type, UNITY_COLLIDER_TYPES, defaults.collider.type),

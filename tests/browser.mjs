@@ -13,6 +13,18 @@ const upload = async data => { await page.locator('#importFile').setInputFiles({
 try {
   await page.goto(process.env.MAPFORGE_URL ?? 'http://localhost:5090');
   await page.locator('#viewport canvas').waitFor();
+  await page.locator('#ceilingBtn').click();
+  let ceilingDoc = await download(), ceilingNode = ceilingDoc.objects[0], ceilingGrid = ceilingNode.unity.ceilingTrapGrids[0];
+  assert.equal(ceilingNode.name, '天花板'); assert.equal(ceilingNode.static, true); assert.equal(ceilingNode.collision, true);
+  assert.deepEqual(ceilingNode.transform.position, [0, 4.1, 0]); assert.deepEqual(ceilingNode.transform.scale, [4, 0.2, 4]);
+  assert.equal(ceilingGrid.columns, 4); assert.equal(ceilingGrid.rows, 4); assert.equal(ceilingGrid.openCells.length, 16);
+  assert.deepEqual(ceilingGrid.rotation, [Math.PI / 2, 0, 0]);
+  await page.locator('#inspector [data-ceiling-cell="5"]').click();
+  ceilingDoc = await download(); assert.equal(ceilingDoc.objects[0].unity.ceilingTrapGrids[0].openCells[5], false);
+  await page.locator('#undoBtn').click(); ceilingDoc = await download();
+  assert.equal(ceilingDoc.objects[0].unity.ceilingTrapGrids[0].openCells[5], true);
+  await page.locator('#undoBtn').click(); assert.equal((await download()).objects.length, 0);
+  console.log('PASS ceiling quick creation, underside grid, cell editing and undo');
   await page.locator('#folderBtn').click(); await change('#objName', 'Environment');
   await page.locator('#folderBtn').click(); await change('#objName', 'Roads');
   await page.locator('.piece[data-type=cube]').click(); await change('#objName', 'Main Road');
@@ -185,5 +197,40 @@ try {
   assert.match(await page.locator('#message').innerText(), /定位选区/);
   await select('environment'); await page.locator('#focusBtn').click();
   await mkdir('artifacts', { recursive: true }); await page.screenshot({ path: 'artifacts/scene-organization.png', fullPage: true });
+  const beforeRecovery = await download();
+  await page.locator('.piece[data-type=cube]').click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('mapforge.autosave.v1') ?? 'null')?.status === 'pending');
+  const pendingDraft = await page.evaluate(() => JSON.parse(localStorage.getItem('mapforge.autosave.v1')));
+  assert.equal(pendingDraft.document.objects.length, beforeRecovery.objects.length + 1);
+  assert.match(await page.locator('#autosaveStatus').innerText(), /已自动保存/);
+  await page.reload(); await page.locator('#viewport canvas').waitFor();
+  assert.equal(await page.locator('#autosaveDialog').isVisible(), true);
+  assert.match(await page.locator('#autosaveSummary').innerText(), /SCENE_ORGANIZATION_DEMO.*个对象/);
+  await page.locator('#autosaveRestoreBtn').click();
+  assert.equal(await page.locator('#undoBtn').isDisabled(), true);
+  assert.deepEqual(await download(), pendingDraft.document);
+  await page.reload(); await page.locator('#viewport canvas').waitFor();
+  assert.equal(await page.locator('#autosaveDialog').isHidden(), true);
+  assert.deepEqual(await download(), pendingDraft.document);
+  console.log('PASS autosave restore, acknowledged startup recovery and clean undo history');
+
+  await page.locator('.piece[data-type=sphere]').click();
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  assert.equal((await page.evaluate(() => JSON.parse(localStorage.getItem('mapforge.autosave.v1')))).status, 'pending');
+  await page.reload(); await page.locator('#viewport canvas').waitFor();
+  assert.equal(await page.locator('#autosaveDialog').isVisible(), true);
+  await page.locator('#autosaveDiscardBtn').click();
+  assert.equal(await page.evaluate(() => localStorage.getItem('mapforge.autosave.v1')), null);
+  await page.reload(); await page.locator('#viewport canvas').waitFor();
+  assert.equal(await page.locator('#autosaveDialog').isHidden(), true);
+  assert.equal((await download()).objects.length, 0);
+  console.log('PASS autosave discard clears the draft without restoring it');
+
+  await page.evaluate(() => localStorage.setItem('mapforge.autosave.v1', JSON.stringify({ schemaVersion: 1, status: 'pending', savedAt: new Date().toISOString(), document: { version: 1, objects: [{ id: 'invalid', type: 'cube' }] } })));
+  await page.reload(); await page.locator('#viewport canvas').waitFor();
+  assert.equal(await page.locator('#autosaveDialog').isHidden(), true);
+  assert.equal(await page.evaluate(() => localStorage.getItem('mapforge.autosave.v1')), null);
+  assert.equal((await download()).objects.length, 0);
+  console.log('PASS invalid autosave drafts are cleared without changing the current scene');
   assert.deepEqual(errors, []); console.log('PASS display controls and browser runtime: no uncaught errors');
 } finally { await browser.close(); }

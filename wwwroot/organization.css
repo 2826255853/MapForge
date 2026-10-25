@@ -68,3 +68,4 @@ fieldset{border:0;padding:0;margin:0;min-width:0}fieldset:disabled{opacity:.55}b
 .sync-message{color:#a3b2bc;overflow-wrap:anywhere}
 .sync-log{margin:7px 0 0;padding-left:16px;color:var(--muted);font:10px/1.7 'DM Mono',monospace;max-height:150px;overflow:auto}
 .sync-btn.connected{border-color:#437d6e;color:var(--mint)}.sync-btn.connected::after{content:"";display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:var(--mint);vertical-align:middle}
+.autosave-status{color:var(--muted);font:10px 'DM Mono',monospace;letter-spacing:0;margin-left:8px}.autosave-status.error{color:#ff9c83}.autosave-summary{color:var(--muted);font-size:12px;line-height:1.7;margin:12px 0 4px}.autosave-panel{width:min(460px,100%)}

@@ -173,6 +173,8 @@ public static class MapValidation
     private static string? ValidateUnityObject(JsonElement unity, string id, out List<string> links)
     {
         links = new List<string>();
+        var ceilingError = ValidateCeilingGrids(unity, id);
+        if (ceilingError is not null) return ceilingError;
         foreach (var key in new[] { "prefab", "collider", "navMesh", "spawnPoint", "enemyCore", "pathNode", "trigger" })
             if (unity.TryGetProperty(key, out var section) && section.ValueKind != JsonValueKind.Null && section.ValueKind != JsonValueKind.Object)
                 return $"{id} 的 unity.{key} 必须是 JSON 对象。";
@@ -278,6 +280,34 @@ public static class MapValidation
                     eventError = Range(triggerEvent, "delay", 0, 600, id, $"unity.trigger.events[{index}].delay"); if (eventError is not null) return eventError;
                 }
             }
+        }
+        return null;
+    }
+
+    private static string? ValidateCeilingGrids(JsonElement unity, string id)
+    {
+        if (!unity.TryGetProperty("ceilingTrapGrids", out var grids) || grids.ValueKind == JsonValueKind.Null) return null;
+        string error = id + " 的天花板网格无效：需要唯一 ID、有效尺寸和对应的布尔掩码。";
+        if (grids.ValueKind != JsonValueKind.Array) return error;
+        var ids = new HashSet<string>();
+        foreach (var grid in grids.EnumerateArray())
+        {
+            if (grid.ValueKind != JsonValueKind.Object || !grid.TryGetProperty("id", out var gridId)
+                || gridId.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(gridId.GetString())
+                || !ids.Add(gridId.GetString()!.Trim())) return error;
+            int columns = 4, rows = 4;
+            if (grid.TryGetProperty("columns", out var c) && (c.ValueKind != JsonValueKind.Number || !c.TryGetInt32(out columns))) return error;
+            if (grid.TryGetProperty("rows", out var r) && (r.ValueKind != JsonValueKind.Number || !r.TryGetInt32(out rows))) return error;
+            if (columns < 1 || columns > 256 || rows < 1 || rows > 256) return error;
+            foreach (var key in new[] { "origin", "rotation" })
+                if (grid.TryGetProperty(key, out var vector) && vector.ValueKind != JsonValueKind.Null
+                    && (vector.ValueKind != JsonValueKind.Array || vector.GetArrayLength() != 3 || vector.EnumerateArray().Any(v => !Finite(v, out _)))) return error;
+            if (grid.TryGetProperty("cellSize", out var size) && (!Finite(size, out var cell) || cell < .01 || cell > 100)) return error;
+            if (grid.TryGetProperty("surfaceOffset", out var offset) && (!Finite(offset, out var gap) || gap < 0 || gap > 10)) return error;
+            if (grid.TryGetProperty("autoFit", out var fit) && fit.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return error;
+            if (grid.TryGetProperty("openCells", out var mask) && mask.ValueKind != JsonValueKind.Null
+                && (mask.ValueKind != JsonValueKind.Array || mask.GetArrayLength() != columns * rows
+                    || mask.EnumerateArray().Any(v => v.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))) return error;
         }
         return null;
     }
