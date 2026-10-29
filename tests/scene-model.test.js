@@ -190,10 +190,11 @@ test('Unity mapping survives a JSON roundtrip and keeps prefab ids searchable', 
 test('Unity summary and stats count the enabled components', () => {
   const doc = normalizeDocument(unityScene());
   const road = doc.objects.find(o => o.id === 'road'), spawn = doc.objects.find(o => o.id === 'spawn_a'), zone = doc.objects.find(o => o.id === 'zone');
-  assert.deepEqual(unitySummary(road), ['Prefab:turret', 'Collider:box', 'NavMesh:walkable']);
+  road.unity.wallTrapGrids.push({ id: 'front', columns: 1, rows: 1 });
+  assert.deepEqual(unitySummary(road), ['WallTrapGrid', 'Prefab:turret', 'Collider:box', 'NavMesh:walkable']);
   assert.deepEqual(unitySummary(spawn), ['SpawnPoint']);
   assert.deepEqual(unitySummary(zone), ['Trigger:sphere']);
   assert.deepEqual(unitySummary(doc.objects[0]), []);
-  assert.deepEqual(unityStats(doc), { prefabs: 2, linkedPrefabs: 2, colliders: 1, navMesh: 2, spawnPoints: 1, enemyCores: 1, pathNodes: 1, triggers: 1, triggers_events: 1, waveOverrides: 2, totalWaves: 5 });
-  assert.deepEqual(unityStats(normalizeDocument({ version: 2, objects: [] })), { prefabs: 0, linkedPrefabs: 0, colliders: 0, navMesh: 0, spawnPoints: 0, enemyCores: 0, pathNodes: 0, triggers: 0, triggers_events: 0, waveOverrides: 0, totalWaves: 3 });
+  assert.deepEqual(unityStats(doc), { prefabs: 2, linkedPrefabs: 2, colliders: 1, ceilingTrapGrids: 0, wallTrapGrids: 1, navMesh: 2, spawnPoints: 1, enemyCores: 1, pathNodes: 1, triggers: 1, triggers_events: 1, waveOverrides: 2, totalWaves: 5 });
+  assert.deepEqual(unityStats(normalizeDocument({ version: 2, objects: [] })), { prefabs: 0, linkedPrefabs: 0, colliders: 0, ceilingTrapGrids: 0, wallTrapGrids: 0, navMesh: 0, spawnPoints: 0, enemyCores: 0, pathNodes: 0, triggers: 0, triggers_events: 0, waveOverrides: 0, totalWaves: 3 });
 });

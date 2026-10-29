@@ -1,4 +1,5 @@
 import { normalizeCeilingGrids } from './ceiling-traps.js';
+import { normalizeWallGrids } from './wall-traps.js';
 // Serializable scene data, shared by the editor and the regression tests.
 export const TYPES = ['cube', 'sphere', 'cylinder', 'plane', 'folder', 'group'];
 export const CATEGORIES = ['geometry', 'waypoint', 'decoration'];
@@ -34,6 +35,7 @@ export const DEFAULT_UNITY_SETTINGS = Object.freeze({ buildNavMeshOnImport: fals
 export function defaultUnityMapping() {
   return {
     ceilingTrapGrids: [],
+    wallTrapGrids: [],
     prefab: { id: '', guid: '', assetPath: '' },
     collider: { type: 'auto', isTrigger: false, center: [0, 0, 0], size: [1, 1, 1], radius: 0.5, height: 2, direction: 1 },
     navMesh: { role: 'none', area: 0, agentType: 'Humanoid', ignoreFromBuild: false, applyToChildren: false, linkStart: [0, 0, 0], linkEnd: [0, 0, 0], linkWidth: 1, bidirectional: true },
@@ -146,7 +148,7 @@ export function normalizeUnityMapping(raw, id, failure) {
   });
   return {
     ceilingTrapGrids: normalizeCeilingGrids(raw.ceilingTrapGrids, id),
-    ...(raw.wallTrapGrids === undefined ? {} : { wallTrapGrids: clone(raw.wallTrapGrids) }),
+    wallTrapGrids: normalizeWallGrids(raw.wallTrapGrids, id),
     prefab: { id: r.text('prefab.id', prefab.id), guid: r.text('prefab.guid', prefab.guid), assetPath: r.text('prefab.assetPath', prefab.assetPath) },
     collider: {
       type: r.choice('collider.type', collider.type, UNITY_COLLIDER_TYPES, defaults.collider.type),
@@ -277,6 +279,8 @@ export function normalizeUnityScene(raw, failure) {
 /** Enabled Unity components of one object, used by the hierarchy and the export summary. */
 export function unitySummary(node) {
   const unity = node.unity ?? defaultUnityMapping(), parts = [];
+  if (unity.ceilingTrapGrids?.length) parts.push('CeilingTrapGrid');
+  if (unity.wallTrapGrids?.length) parts.push('WallTrapGrid');
   if (unity.prefab.id) parts.push(`Prefab:${unity.prefab.id}`);
   if (unity.collider.type !== 'auto' || unity.collider.isTrigger) parts.push(`Collider:${unity.collider.type}${unity.collider.isTrigger ? '+Trigger' : ''}`);
   if (unity.navMesh.role !== 'none') parts.push(`NavMesh:${unity.navMesh.role}`);
@@ -289,10 +293,12 @@ export function unitySummary(node) {
 
 /** Scene-wide Unity mapping counts for status messages, tests and the Unity importer log. */
 export function unityStats(doc) {
-  const stats = { prefabs: doc.unity?.prefabs?.length ?? 0, linkedPrefabs: 0, colliders: 0, navMesh: 0, spawnPoints: 0, enemyCores: 0, pathNodes: 0, triggers: 0, triggers_events: 0, waveOverrides: 0, totalWaves: doc.unity?.waves?.totalWaves ?? 0 };
+  const stats = { prefabs: doc.unity?.prefabs?.length ?? 0, linkedPrefabs: 0, colliders: 0, ceilingTrapGrids: 0, wallTrapGrids: 0, navMesh: 0, spawnPoints: 0, enemyCores: 0, pathNodes: 0, triggers: 0, triggers_events: 0, waveOverrides: 0, totalWaves: doc.unity?.waves?.totalWaves ?? 0 };
   for (const node of doc.objects) {
     const unity = node.unity;
     if (!unity) continue;
+    stats.ceilingTrapGrids += unity.ceilingTrapGrids?.length ?? 0;
+    stats.wallTrapGrids += unity.wallTrapGrids?.length ?? 0;
     if (unity.prefab.id) stats.linkedPrefabs++;
     if (unity.collider.type !== 'auto' || unity.collider.isTrigger) stats.colliders++;
     if (unity.navMesh.role !== 'none') stats.navMesh++;

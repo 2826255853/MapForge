@@ -173,8 +173,10 @@ public static class MapValidation
     private static string? ValidateUnityObject(JsonElement unity, string id, out List<string> links)
     {
         links = new List<string>();
-        var ceilingError = ValidateCeilingGrids(unity, id);
+        var ceilingError = ValidateTrapGrids(unity, id, "ceilingTrapGrids", 4);
         if (ceilingError is not null) return ceilingError;
+        var wallError = ValidateTrapGrids(unity, id, "wallTrapGrids", 3);
+        if (wallError is not null) return wallError;
         foreach (var key in new[] { "prefab", "collider", "navMesh", "spawnPoint", "enemyCore", "pathNode", "trigger" })
             if (unity.TryGetProperty(key, out var section) && section.ValueKind != JsonValueKind.Null && section.ValueKind != JsonValueKind.Object)
                 return $"{id} 的 unity.{key} 必须是 JSON 对象。";
@@ -284,10 +286,10 @@ public static class MapValidation
         return null;
     }
 
-    private static string? ValidateCeilingGrids(JsonElement unity, string id)
+    private static string? ValidateTrapGrids(JsonElement unity, string id, string property, int defaultRows)
     {
-        if (!unity.TryGetProperty("ceilingTrapGrids", out var grids) || grids.ValueKind == JsonValueKind.Null) return null;
-        string error = id + " 的天花板网格无效：需要唯一 ID、有效尺寸和对应的布尔掩码。";
+        if (!unity.TryGetProperty(property, out var grids) || grids.ValueKind == JsonValueKind.Null) return null;
+        string error = id + " 的 " + property + " 无效：需要唯一 ID、有效尺寸和对应的布尔掩码。";
         if (grids.ValueKind != JsonValueKind.Array) return error;
         var ids = new HashSet<string>();
         foreach (var grid in grids.EnumerateArray())
@@ -295,7 +297,7 @@ public static class MapValidation
             if (grid.ValueKind != JsonValueKind.Object || !grid.TryGetProperty("id", out var gridId)
                 || gridId.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(gridId.GetString())
                 || !ids.Add(gridId.GetString()!.Trim())) return error;
-            int columns = 4, rows = 4;
+            int columns = 4, rows = defaultRows;
             if (grid.TryGetProperty("columns", out var c) && (c.ValueKind != JsonValueKind.Number || !c.TryGetInt32(out columns))) return error;
             if (grid.TryGetProperty("rows", out var r) && (r.ValueKind != JsonValueKind.Number || !r.TryGetInt32(out rows))) return error;
             if (columns < 1 || columns > 256 || rows < 1 || rows > 256) return error;

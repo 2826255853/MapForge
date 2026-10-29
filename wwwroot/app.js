@@ -5,6 +5,7 @@ import { normalizeDocument, makeNode, clone, descendants, rootsOf, effectiveStat
 import { createAutosaveStore } from './autosave.js';
 import { unitySectionHtml, wireUnitySection, unitySceneHtml, wireUnityScene } from './unity-ui.js';
 import { addCeilingGrid, assertCeilingSupport, resizeCeilingMask, ceilingSectionHtml, wireCeilingSection } from './ceiling-traps.js';
+import { addWallGrid, assertWallSupport, resizeWallMask, wallSectionHtml, wireWallSection } from './wall-traps.js';
 import { unitySyncHtml, wireUnitySync, fetchSyncStatus, fetchSyncPreview, sendMapToUnity, setUnityTarget, resetSyncBaseline } from './unity-sync.js';
 
 const $ = selector => document.querySelector(selector);
@@ -148,7 +149,7 @@ function blurActiveInside(root) { const active = document.activeElement; if (act
 function nextId(document) { const ids = new Set(document.objects.map(o => o.id)); let n = 1; while (ids.has(`obj_${n}`)) n++; return `obj_${n}`; }
 function commit(change, selection = null, message = '修改已保存，可撤销') {
   if (gizmo.dragging) return;
-  const before = capture(), draft = clone(doc); change(draft); refreshCeilings(draft);
+  const before = capture(), draft = clone(doc); change(draft); refreshCeilings(draft); refreshWalls(draft);
   const after = { document: normalizeDocument(draft), selection: selection instanceof Function ? selection(draft) : selection ?? [...selected] };
   const changed = history.record(before, after);
   restore(after);
@@ -200,6 +201,62 @@ function createCeiling() {
   }, () => [id], '已创建天花板与朝下安装网格，可撤销');
   focusNodes([id]);
 }
+
+function createWall() {
+  let id;
+  commit(d => {
+    id = nextId(d);
+    const node = makeNode('cube', id);
+    node.name = '陷阱墙';
+    node.static = true;
+    node.collision = true;
+    node.color = '#7894ad';
+    node.transform.position = [0, 1.5, 0];
+    node.transform.scale = [4, 3, .2];
+    addWallGrid(node);
+    d.objects.push(node);
+  }, () => [id], '已创建墙面与陷阱网格，可撤销');
+  focusNodes([id]);
+}
+
+function refreshWalls(document) {
+  const matrices = new Map(), byId = new Map(document.objects.map(o => [o.id, o]));
+  const matrix = node => {
+    if (matrices.has(node.id)) return matrices.get(node.id);
+    const t = node.transform, m = new THREE.Matrix4().compose(new THREE.Vector3(...t.position),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(...t.rotation)), new THREE.Vector3(...t.scale));
+    if (node.parentId) m.premultiply(matrix(byId.get(node.parentId)));
+    matrices.set(node.id, m);
+    return m;
+  };
+  for (const node of document.objects) {
+    if (!node.unity.wallTrapGrids?.length) continue;
+    assertWallSupport(node);
+    const base = matrix(node);
+    const right = new THREE.Vector3().setFromMatrixColumn(base, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(base, 1);
+    const forward = new THREE.Vector3().setFromMatrixColumn(base, 2);
+    const axes = [right.clone().normalize(), up.clone().normalize(), forward.clone().normalize()];
+    if (axes[1].dot(new THREE.Vector3(0, 1, 0)) < .999
+        || Math.abs(axes[0].dot(axes[1])) > .001 || Math.abs(axes[0].dot(axes[2])) > .001
+        || Math.abs(axes[1].dot(axes[2])) > .001 || base.determinant() <= 0)
+      throw new Error('墙面的父级变换造成倾斜、剪切或负缩放，请先调整父级。');
+    const dimensions = [1, 1, 1], collider = node.unity.collider;
+    const center = collider.type === 'box' ? collider.center.map((v, i) => v * dimensions[i]) : [0, 0, 0];
+    if (collider.type === 'box') dimensions.forEach((v, i) => { dimensions[i] = v * collider.size[i]; });
+    for (const grid of node.unity.wallTrapGrids) {
+      if (!grid.autoFit) continue;
+      const columns = Math.floor(dimensions[0] * right.length() / grid.cellSize + .001);
+      const rows = Math.floor(dimensions[1] * up.length() / grid.cellSize + .001);
+      if (columns < 1 || rows < 1 || columns > 256 || rows > 256)
+        throw new Error('墙面须能容纳 1–256 行、列的完整网格。');
+      if (columns !== grid.columns || rows !== grid.rows) resizeWallMask(grid, columns, rows);
+      grid.origin = [center[0] - columns * grid.cellSize / right.length() / 2,
+        center[1] - rows * grid.cellSize / up.length() / 2, center[2] + dimensions[2] / 2];
+      grid.rotation = [0, 0, 0];
+    }
+  }
+}
 function disposeTree(root) { root.traverse(o => { o.geometry?.dispose(); if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material?.dispose(); }); root.clear(); }
 function geometry(type) { return type === 'cube' ? new THREE.BoxGeometry(1, 1, 1) : type === 'sphere' ? new THREE.SphereGeometry(0.6, 24, 16) : type === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1.4, 24) : type === 'plane' ? new THREE.BoxGeometry(3, 0.12, 3) : null; }
 function rebuild() {
@@ -234,6 +291,45 @@ function updateOverlays() {
   }
   if (filters.unity) unityOverlays();
   ceilingOverlays();
+  wallOverlays();
+}
+
+function wallOverlays() {
+  for (const node of doc.objects) {
+    if (!isShown(node) || (!selected.has(node.id) && !filters.unity)) continue;
+    const base = runtime.get(node.id).root.matrixWorld;
+    const right = new THREE.Vector3().setFromMatrixColumn(base, 0).normalize();
+    const up = new THREE.Vector3().setFromMatrixColumn(base, 1).normalize();
+    const normal = new THREE.Vector3().setFromMatrixColumn(base, 2).normalize();
+    for (const g of node.unity.wallTrapGrids ?? []) {
+      const origin = new THREE.Vector3(...g.origin).applyMatrix4(base).addScaledVector(normal, g.surfaceOffset);
+      const positions = new Float32Array(g.columns * g.rows * 72), colors = new Float32Array(positions.length);
+      const corners = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+      const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+      const open = new THREE.Color(0x69e0bf), closed = new THREE.Color(0xff5f8d);
+      const rightValues = right.toArray(), upValues = up.toArray(), normalValues = normal.toArray(), originValues = origin.toArray();
+      let cursor = 0;
+      for (let y = 0; y < g.rows; y++) for (let x = 0; x < g.columns; x++) {
+        const color = g.openCells[x + y * g.columns] ? open : closed;
+        for (const [a, b] of edges) for (const corner of [corners[a], corners[b]]) {
+          const dx = (x + .5) * g.cellSize + corner[0] * g.cellSize * .48;
+          const dy = (y + .5) * g.cellSize + corner[1] * g.cellSize * .48;
+          const dz = corner[2] * .01;
+          positions[cursor] = originValues[0] + rightValues[0] * dx + upValues[0] * dy + normalValues[0] * dz;
+          positions[cursor + 1] = originValues[1] + rightValues[1] * dx + upValues[1] * dy + normalValues[1] * dz;
+          positions[cursor + 2] = originValues[2] + rightValues[2] * dx + upValues[2] * dy + normalValues[2] * dz;
+          colors[cursor] = color.r; colors[cursor + 1] = color.g; colors[cursor + 2] = color.b;
+          cursor += 3;
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      overlays.add(new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ vertexColors: true })));
+      overlays.add(new THREE.ArrowHelper(normal, origin.clone().addScaledVector(right, g.columns * g.cellSize / 2).addScaledVector(up, g.rows * g.cellSize / 2), .8, 0xffc35f));
+    }
+  }
 }
 
 function ceilingOverlays() {
@@ -347,6 +443,7 @@ function renderInspector() {
   const blocked = states.get(node.id).locked, excluded = descendants(doc, [node.id]);
   const parentOptions = '<option value="">场景根节点</option>' + doc.objects.filter(o => !excluded.has(o.id)).map(o => `<option value="${escape(o.id)}" ${o.id === node.parentId ? 'selected' : ''}>${escape(pathFor(o))}</option>`).join('');
   blurActiveInside(el); el.innerHTML = `<div class="inspector-heading"><strong>${escape(node.name)}</strong><button class="btn" id="focusSelection">定位 · F</button></div><div class="node-path">${escape(pathFor(node))}</div><div class="node-id">ID: ${escape(node.id)} · ${labels[node.type]}</div>${blocked ? '<p class="lock-notice">已锁定（含父级继承）。在层级中解锁后编辑。</p>' : ''}<fieldset ${blocked ? 'disabled' : ''}>${field('名称', `<input id="objName" value="${escape(node.name)}" maxlength="200">`)}${field('父级', `<select id="parentId">${parentOptions}</select>`)}<div class="eyebrow">Local Transform / 相对父级</div>${['position', 'rotation', 'scale'].map(prop => `<div class="transform-label">${{ position: '位置（米）', rotation: '旋转（度）', scale: '缩放' }[prop]}</div><div class="axis-grid">${node.transform[prop].map((value, i) => `<label>${'XYZ'[i]}<input type="number" step="any" ${prop === 'scale' ? 'min="0.01"' : ''} data-prop="${prop}" data-axis="${i}" value="${Number((prop === 'rotation' ? THREE.MathUtils.radToDeg(value) : value).toFixed(4))}"></label>`).join('')}</div>`).join('')}<div class="eyebrow">Object Properties / 对象属性</div>${field('颜色', `<input id="objColor" type="color" value="${node.color}">`)}${field('材质', `<select id="materialType"><option value="standard" ${node.material.type === 'standard' ? 'selected' : ''}>标准 / 受光照</option><option value="unlit" ${node.material.type === 'unlit' ? 'selected' : ''}>无光照</option></select>`)}${field('粗糙度', `<input id="roughness" type="number" min="0" max="1" step="any" value="${node.material.roughness}">`)}${field('金属度', `<input id="metalness" type="number" min="0" max="1" step="any" value="${node.material.metalness}">`)}${field('标签', `<input id="objTags" value="${escape(node.tags.join(', '))}" placeholder="多个标签用逗号分隔">`)}${field('Layer', `<input id="objLayer" type="number" min="0" max="31" step="1" value="${node.layer}">`)}${field('碰撞', `<input id="objCollision" type="checkbox" ${node.collision ? 'checked' : ''}>`)}${field('静态', `<input id="objStatic" type="checkbox" ${node.static ? 'checked' : ''}>`)}${field('Prefab', `<input id="objPrefab" value="${escape(node.prefabType)}" placeholder="例如 EnemySpawnPoint">`)}${field('显示分类', `<select id="objCategory"><option value="geometry" ${node.category === 'geometry' ? 'selected' : ''}>场景几何</option><option value="waypoint" ${node.category === 'waypoint' ? 'selected' : ''}>路径点</option><option value="decoration" ${node.category === 'decoration' ? 'selected' : ''}>装饰物</option></select>`)}<label class="parameters-label" for="objParameters">游戏逻辑参数（JSON 对象）</label><textarea id="objParameters" rows="6" spellcheck="false">${escape(JSON.stringify(node.parameters, null, 2))}</textarea><button class="btn" id="applyParameters">应用参数</button><button class="danger" id="deleteBtn">删除对象及子对象</button>${ceilingSectionHtml(node, escape)}${unitySectionHtml(node, doc, { escape, field })}</fieldset>`;
+  el.querySelector('fieldset').insertAdjacentHTML('beforeend', wallSectionHtml(node, escape));
   $('#focusSelection').onclick = () => focusNodes([node.id]);
   const edit = (action, subtree = false, message = '修改已保存，可撤销') => safely(() => { assertEditable(doc, [node.id], subtree); commit(d => action(d.objects.find(o => o.id === node.id)), null, message); });
   $('#objName').onchange = e => edit(o => { o.name = e.target.value.trim() || o.id; });
@@ -364,6 +461,7 @@ function renderInspector() {
   $('#applyParameters').onclick = () => edit(o => { try { o.parameters = JSON.parse($('#objParameters').value); } catch { throw new Error('游戏逻辑参数不是有效的 JSON。'); } });
   $('#deleteBtn').onclick = () => safely(deleteSelection);
   wireCeilingSection(node, el, edit, () => {});
+  wireWallSection(node, el, edit, () => {});
   wireUnitySection(node, doc, { root: el, edit: (action, message) => edit(action, false, message), editScene: unityApi.editScene, notice });
 }
 
@@ -427,7 +525,7 @@ gizmo.addEventListener('dragging-changed', event => {
   try {
     const node = single(); assertEditable(doc, [node.id], true); const root = runtime.get(node.id).root, draft = clone(doc), target = draft.objects.find(o => o.id === node.id);
     target.transform = { position: root.position.toArray(), rotation: [root.rotation.x, root.rotation.y, root.rotation.z], scale: root.scale.toArray() };
-    refreshCeilings(draft); doc = normalizeDocument(draft); const changed = history.record(before, capture()); rebuild(); if (changed) markAutosaveDirty(); notice('变换已保存，可撤销');
+    refreshCeilings(draft); refreshWalls(draft); doc = normalizeDocument(draft); const changed = history.record(before, capture()); rebuild(); if (changed) markAutosaveDirty(); notice('变换已保存，可撤销');
   } catch (error) { restore(before); notice(error.message, true); }
 });
 gizmo.addEventListener('objectChange', () => { const root = gizmo.object; if (!root) return; document.querySelectorAll('[data-prop]').forEach(input => { const value = root[input.dataset.prop]['xyz'[Number(input.dataset.axis)]]; input.value = Number((input.dataset.prop === 'rotation' ? THREE.MathUtils.radToDeg(value) : value).toFixed(4)); }); });
@@ -441,10 +539,11 @@ function importMapText(text) {
 function exportMap() {
   const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = 'mapforge-world.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); const stats = unityStats(doc);
   writeAutosave('acknowledged');
-  notice(`地图已导出：${doc.objects.length} 个对象 · Unity 组件 Prefab ${stats.linkedPrefabs} / Collider ${stats.colliders} / NavMesh ${stats.navMesh} / SpawnPoint ${stats.spawnPoints} / EnemyCore ${stats.enemyCores} / 路径节点 ${stats.pathNodes} / 触发器 ${stats.triggers} / 总波次 ${stats.totalWaves}`);
+  notice(`地图已导出：${doc.objects.length} 个对象 · Unity 组件 Prefab ${stats.linkedPrefabs} / Collider ${stats.colliders} / 天花板网格 ${stats.ceilingTrapGrids} / 墙面网格 ${stats.wallTrapGrids} / NavMesh ${stats.navMesh} / SpawnPoint ${stats.spawnPoints} / EnemyCore ${stats.enemyCores} / 路径节点 ${stats.pathNodes} / 触发器 ${stats.triggers} / 总波次 ${stats.totalWaves}`);
 }
 document.querySelectorAll('.piece').forEach(b => b.onclick = () => safely(() => add(b.dataset.type))); document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 $('#ceilingBtn').onclick = () => safely(createCeiling);
+$('#wallBtn').onclick = () => safely(createWall);
 for (const [id, action] of Object.entries({ undoBtn: undo, redoBtn: redo, copyBtn: copySelection, pasteBtn: () => pasteSelection(), arrayBtn: arrayDuplicate, alignBtn: alignSelection, folderBtn: () => add('folder'), groupBtn: groupSelection, rootBtn: () => reparent([...selected], null), focusBtn: () => focusNodes([...selected]), saveBtn: exportMap })) $(`#${id}`).onclick = () => safely(action);
 $('#newBtn').onclick = () => { const before = capture(), after = { document: normalizeDocument({ version: MAP_FORMAT_VERSION, objects: [] }), selection: [] }; const changed = history.record(before, after); restore(after); if (changed) markAutosaveDirty(); notice('已新建场景，可撤销恢复'); };
 $('#importBtn').onclick = () => $('#importFile').click();

@@ -148,6 +148,26 @@
             "additionalProperties": true
           }
         },
+        "wallTrapGrids": {
+          "type": "array",
+          "description": "Trap grid mounted on the wall's local positive-Z face.",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "origin": {"$ref": "#/$defs/vector"},
+              "rotation": {"$ref": "#/$defs/vector"},
+              "columns": {"type": "integer", "minimum": 1, "maximum": 256},
+              "rows": {"type": "integer", "minimum": 1, "maximum": 256, "default": 3},
+              "cellSize": {"type": "number", "minimum": 0.01, "maximum": 100},
+              "surfaceOffset": {"type": "number", "minimum": 0, "maximum": 10},
+              "autoFit": {"type": "boolean", "default": true},
+              "openCells": {"type": "array", "items": {"type": "boolean"}}
+            },
+            "additionalProperties": true
+          }
+        },
         "prefab": {
           "type": "object",
           "description": "Prefab reference, exported as a Prefab ID (plus optional asset path and GUID).",
