@@ -40734,12 +40734,12 @@
     "position": [
      -24.0,
      0.008,
-     -27.5
+     -64.0
     ],
     "scale": [
-     0.12,
+     0.18,
      0.016,
-     11.0
+     62.0
     ],
     "rotation": [
      0,
@@ -40747,7 +40747,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40787,7 +40787,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40827,7 +40827,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40867,7 +40867,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40907,7 +40907,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40947,7 +40947,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -40987,7 +40987,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41254,12 +41254,12 @@
     "position": [
      0.0,
      0.008,
-     -27.5
+     -64.0
     ],
     "scale": [
-     0.12,
+     0.18,
      0.016,
-     11.0
+     62.0
     ],
     "rotation": [
      0,
@@ -41267,7 +41267,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41307,7 +41307,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41347,7 +41347,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41387,7 +41387,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41654,12 +41654,12 @@
     "position": [
      24.0,
      0.008,
-     -27.5
+     -64.0
     ],
     "scale": [
-     0.12,
+     0.18,
      0.016,
-     11.0
+     62.0
     ],
     "rotation": [
      0,
@@ -41667,7 +41667,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41707,7 +41707,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41747,7 +41747,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41787,7 +41787,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41827,7 +41827,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41867,7 +41867,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -41907,7 +41907,7 @@
      0
     ]
    },
-   "color": "#d4b348",
+   "color": "#f2c94c",
    "material": {
     "type": "standard",
     "roughness": 0.85,
@@ -66603,7 +66603,7 @@
     "position": [
      -75.7,
      0.18,
-     8
+     -28
     ],
     "rotation": [
      0,
@@ -66613,7 +66613,7 @@
     "scale": [
      0.6,
      0.36,
-     96
+     32
     ]
    },
    "color": "#788387",
@@ -66623,6 +66623,70 @@
     "metalness": 0.05
    },
    "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-left-outer-curb-south",
+   "name": "Perimeter Kerb",
+   "type": "cube",
+   "parentId": "wing-left",
+   "transform": {
+    "position": [
+     -75.7,
+     0.18,
+     29
+    ],
+    "rotation": [
+     0,
+     0,
+     0
+    ],
+    "scale": [
+     0.6,
+     0.36,
+     54
+    ]
+   },
+   "color": "#788387",
+   "material": {
+    "type": "standard",
+    "roughness": 0.85,
+    "metalness": 0.05
+   },
+   "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-left-exterior-approach",
+   "name": "West Exterior Approach",
+   "type": "cube",
+   "parentId": "wing-left",
+   "transform": {
+    "position": [-81.7, -0.25, -5],
+    "rotation": [0, 0, 0],
+    "scale": [24, 0.5, 18]
+   },
+   "color": "#687477",
+   "material": {"type": "standard", "roughness": 0.85, "metalness": 0.05},
+   "tags": ["exterior-approach"],
    "layer": 0,
    "collision": true,
    "static": true,
@@ -67963,7 +68027,7 @@
     "position": [
      75.7,
      0.18,
-     8
+     -28
     ],
     "rotation": [
      0,
@@ -67973,7 +68037,7 @@
     "scale": [
      0.6,
      0.36,
-     96
+     32
     ]
    },
    "color": "#788387",
@@ -67983,6 +68047,70 @@
     "metalness": 0.05
    },
    "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-right-outer-curb-south",
+   "name": "Perimeter Kerb",
+   "type": "cube",
+   "parentId": "wing-right",
+   "transform": {
+    "position": [
+     75.7,
+     0.18,
+     29
+    ],
+    "rotation": [
+     0,
+     0,
+     0
+    ],
+    "scale": [
+     0.6,
+     0.36,
+     54
+    ]
+   },
+   "color": "#788387",
+   "material": {
+    "type": "standard",
+    "roughness": 0.85,
+    "metalness": 0.05
+   },
+   "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-right-exterior-approach",
+   "name": "East Exterior Approach",
+   "type": "cube",
+   "parentId": "wing-right",
+   "transform": {
+    "position": [81.7, -0.25, -5],
+    "rotation": [0, 0, 0],
+    "scale": [24, 0.5, 18]
+   },
+   "color": "#687477",
+   "material": {"type": "standard", "roughness": 0.85, "metalness": 0.05},
+   "tags": ["exterior-approach"],
    "layer": 0,
    "collision": true,
    "static": true,
@@ -70243,7 +70371,7 @@
     "position": [
      -68.4,
      2.65,
-     1.1
+     2.4
     ],
     "rotation": [
      0,
@@ -70251,7 +70379,7 @@
      0
     ],
     "scale": [
-     14,
+     15,
      5.3,
      0.35
     ]
@@ -70283,7 +70411,7 @@
     "position": [
      -68.4,
      2.65,
-     -11.1
+     -12.4
     ],
     "rotation": [
      0,
@@ -70291,7 +70419,7 @@
      0
     ],
     "scale": [
-     14,
+     15,
      5.3,
      0.35
     ]
@@ -70323,7 +70451,7 @@
     "position": [
      -75.6,
      2.65,
-     -5
+     -12.7
     ],
     "rotation": [
      0,
@@ -70333,7 +70461,7 @@
     "scale": [
      0.5,
      5.3,
-     12.4
+     1
     ]
    },
    "color": "#788387",
@@ -70342,6 +70470,30 @@
     "roughness": 0.85,
     "metalness": 0.05
    },
+   "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-pump-inlet-back-south",
+   "name": "Intake Retaining Wall",
+   "type": "cube",
+   "parentId": "wing-pump-inlet",
+   "transform": {
+    "position": [-75.6, 2.65, 2.7],
+    "rotation": [0, 0, 0],
+    "scale": [0.5, 5.3, 1]
+   },
+   "color": "#788387",
+   "material": {"type": "standard", "roughness": 0.85, "metalness": 0.05},
    "tags": [],
    "layer": 0,
    "collision": true,
@@ -70373,7 +70525,7 @@
     "scale": [
      14.5,
      0.52,
-     12.6
+     16.6
     ]
    },
    "color": "#59666c",
@@ -80087,7 +80239,7 @@
    "parentId": "spawnpoints",
    "transform": {
     "position": [
-     -69,
+     -82,
      0.08,
      -5
     ],
@@ -80165,7 +80317,7 @@
    "parentId": "pathnodes",
    "transform": {
     "position": [
-     -69,
+     -82,
      0,
      -5
     ],
@@ -80587,7 +80739,7 @@
     "position": [
      68.4,
      2.65,
-     1.1
+     2.4
     ],
     "rotation": [
      0,
@@ -80595,7 +80747,7 @@
      0
     ],
     "scale": [
-     14,
+     15,
      5.3,
      0.35
     ]
@@ -80627,7 +80779,7 @@
     "position": [
      68.4,
      2.65,
-     -11.1
+     -12.4
     ],
     "rotation": [
      0,
@@ -80635,7 +80787,7 @@
      0
     ],
     "scale": [
-     14,
+     15,
      5.3,
      0.35
     ]
@@ -80667,7 +80819,7 @@
     "position": [
      75.6,
      2.65,
-     -5
+     -12.7
     ],
     "rotation": [
      0,
@@ -80677,7 +80829,7 @@
     "scale": [
      0.5,
      5.3,
-     12.4
+     1
     ]
    },
    "color": "#788387",
@@ -80686,6 +80838,30 @@
     "roughness": 0.85,
     "metalness": 0.05
    },
+   "tags": [],
+   "layer": 0,
+   "collision": true,
+   "static": true,
+   "visible": true,
+   "locked": false,
+   "collapsed": false,
+   "prefabType": "",
+   "parameters": {},
+   "parametersJson": "{}",
+   "category": "geometry"
+  },
+  {
+   "id": "wing-workshop-inlet-back-south",
+   "name": "Intake Retaining Wall",
+   "type": "cube",
+   "parentId": "wing-workshop-inlet",
+   "transform": {
+    "position": [75.6, 2.65, 2.7],
+    "rotation": [0, 0, 0],
+    "scale": [0.5, 5.3, 1]
+   },
+   "color": "#788387",
+   "material": {"type": "standard", "roughness": 0.85, "metalness": 0.05},
    "tags": [],
    "layer": 0,
    "collision": true,
@@ -80717,7 +80893,7 @@
     "scale": [
      14.5,
      0.52,
-     12.6
+     16.6
     ]
    },
    "color": "#59666c",
@@ -81545,7 +81721,7 @@
    "parentId": "spawnpoints",
    "transform": {
     "position": [
-     69,
+     82,
      0.08,
      -5
     ],
@@ -81623,7 +81799,7 @@
    "parentId": "pathnodes",
    "transform": {
     "position": [
-     69,
+     82,
      0,
      -5
     ],
